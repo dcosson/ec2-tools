@@ -4,19 +4,21 @@ ec2-COMMAND -h for help
 
 # useful commands:
 - ec2-describe-instances
+- ec2-describe-instance-status
 - ec2-describe-keypairs
 - ec2-run-instances
+- ec2-create-tag --tag Name=SOMETHING  # sets the name displayed in the EC2 interface
 
-# good AMI's:
-- ami-ab79cdc2 - ubuntu 12.04 32-bit server from Aug 22, 2012 (instance-backed!)
-- ami-097ace60 - ubuntu 12.04 64-bit server from Aug 22, 2012 (instance-backed!)
+# Ubuntu AMI's:
 - ami-057bcf6c - ubuntu 12.04 32-bit server from Aug 22, 2012 (ebs-backed)
 - ami-137bcf7a - ubuntu 12.04 64-bit server from June 2012 (ebs-backed)
+- ami-ab79cdc2 - ubuntu 12.04 32-bit server from Aug 22, 2012 (instance-backed!)
+- ami-097ace60 - ubuntu 12.04 64-bit server from Aug 22, 2012 (instance-backed!)
 
 # loading data
 - you can specify user-data when you upload
 - there is always meta-data about the instance available
-- you can get data via REST interface, GET request to `http://169.254.169.254/1.0/` will show you the available paths to query additional data (e.g. /user-data/ or /meta-data/, then subdir, etc).
+- you can get data via REST interface, GET request to `http://169.254.169.254/1.0/` will show you the available paths to query additional data (e.g. /user-data/ or /meta-data/, then further subdirs, etc).
 - note that trailing slashes are required
 
 # Example commands
