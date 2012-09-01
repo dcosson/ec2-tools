@@ -3,19 +3,13 @@
 ###
 ### Some of the vars
 ###
-if [ ! $# -eq 1 ] && [ ! $# -eq 2 ]
+if [ ! $# -eq 1 ]
 then
-    echo 'usage: ./create_instance.sh BOXNAME [HOSTNAME]'
+    echo 'usage: ./create_instance.sh HOSTNAME'
     exit 1;
 fi
-BOXNAME=$1
-# HOSTNAME is optional, it will default to BOXNAME
-if [ $# -eq 2 ]
-then
-    HOSTNAME=$2
-else
-    HOSTNAME=$BOXNAME
-fi
+HOSTNAME=$1
+BOXNAME=$HOSTNAME  # the Name tag, for the ec2 menu
 
 ### 
 ### EC2 Commands
@@ -23,10 +17,15 @@ fi
 echo "Creating box $BOXNAME"
 # create a new 8GB ebs-backed micro instance in us east 1c.  We're passing in hostname as userdata
 AMI_ID=`ec2-run-instances ami-057bcf6c --instance-type t1.micro --availability-zone us-east-1c --user-data "hostname=$HOSTNAME" --block-device-mapping /dev/sda1=:8:true --key venmo_macbook_air_danny_rsa | egrep '^INSTANCE' | cut -f 2`
+if [ ! `echo $AMI_ID` ]
+then
+    exit 1
+fi
 PUBLIC_DNS=`ec2-describe-instances $AMI_ID | egrep '^INSTANCE' | cut -f 4`
 # set the name
 ec2-create-tags $AMI_ID --tag Name=$BOXNAME > /dev/null
 echo "domain name: $PUBLIC_DNS"
+
 
 ### give the box time to come up
 echo -n "waiting for box to launch"
@@ -42,8 +41,9 @@ do
 done
 echo ' box running!'
 
+
 ###
-### Set up the Hostname using the script
+### Set the Hostname using the script
 ###
 SET_HOSTNAME_SCRIPT='./set_hostname.sh'
 USER=ubuntu

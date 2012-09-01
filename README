@@ -1,1 +1,0 @@
-A couple scripts to set up EC2 boxes the way I like them.  The idea is to get them to the state where I can run my puppet manifests on them
