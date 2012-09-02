@@ -23,6 +23,7 @@ def create_instance(name,
                     ami_id=None,
                     box_type=None,
                     size_gb=None,
+                    groups=None,
                     zone=None,
                     key_pair=None):
     """ Create an ebs-backed instance, with hostname set to its EC2 Name tag
@@ -32,7 +33,7 @@ def create_instance(name,
         :zone => zone (within us-east region) to use
         :key_pair => AWS private key to accept as default on the new box
     """
-    ### Create the box
+    ### Parse args and write ec2 command
     ###   (some details are hard-coded for now, until I need to tweak them)
     params = {'ami_id': ami_id or DEFAULT_AMI,
               'box_type': box_type or DEFAULT_BOX_TYPE,
@@ -44,9 +45,18 @@ def create_instance(name,
         "--availability-zone {zone} --user-data 'name={name}' " \
         "--block-device-mapping /dev/sda1=:{size_gb}:true " \
         "--key {key_pair}".format(**params)
+    # groups is a list argument
+    groups = groups or DEFAULT_GROUPS
+    if isinstance(groups, basestring):
+        groups = groups.split(',')
+    for g in groups:
+        cmd += ' --group {0}'.format(g)
+
+    ### Create the box
     logging.info("Creating box {0}...".format(name))
     result = local(cmd, capture=True)
     box_id = _grab_instance_line_and_split(result)[1]
+
     ### set Name tag
     cmd = 'ec2-create-tags {0} --tag Name={1}'.format(box_id, name)
     local(cmd, capture=True)
