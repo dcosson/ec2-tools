@@ -1,18 +1,19 @@
 #!/usr/bin/env python
-""" Fabric wrappers around EC2 Command Line Tools and other helper functions
- for bringing up boxes that are ready to be provisioned with puppet
- You need the EC2 command line tools installed and configured properly
+""" Fabric tasks for bringing up boxes with EC2 Command Line Tools and setting
+them up as puppet agents connecting to an existing puppet master.
+
+Must have AWS tools installed and set up properly
+  (try `fab get_status:box_id=BOX_ID` to test that credentials are set up)
+
+Various fallback values imported from fab_conf.py
 """
 import logging
 import time
 import re
 
 from fabric.api import task, local, run, sudo, env, settings, put
-
-## General setup
-logging.basicConfig(level=logging.DEBUG)
-env.user = 'ubuntu'  # I only really use ubuntu boxes
-
+## Keep general setup options & defaults in fab_conf.py
+from fab_conf import *
 
 ###
 ### The tasks
@@ -26,11 +27,15 @@ def create_instance(name,
                     key_pair='venmo_macbook_air_danny_rsa'):
     """ Create an ebs-backed instance, with hostname set to its EC2 Name tag
         :name => EC2 Name and hostname
+        :ami_id => the AWS AMI ID of the OS image to install on the box.
+            Defaults to Ubuntu 1004 32 bit
+        :box_type => amazon box size (e.g. t1.micro, m1.large, etc)
+        :zone => zone (within us-east region) to use.  Defaults to "us-east-1c"
+        :key_pair => AWS private key to accept as default on the new box
     """
     ### Create the box
     ###   (some details are hard-coded for now, until I need to tweak them)
-    ami_ubuntu_1004_32_bit = "ami-057bcf6c"
-    params = {'ami_id': ami_id or ami_ubuntu_1004_32_bit, 'box_type': box_type,
+    params = {'ami_id': ami_id or DEFAULT_AMI, 'box_type': box_type,
         'size_gb': size_gb, 'zone': zone, 'hostname': name,
         'key_pair': 'venmo_macbook_air_danny_rsa'}
     cmd = "ec2-run-instances {ami_id} --instance-type {box_type} " \
@@ -55,7 +60,7 @@ def create_instance_and_set_hostname(name, **kwargs):
     logging.debug('checking status for box_id: {0}'.format(box_id))
     while True:
         logging.debug('waiting to come on line...')
-        time.sleep(10)
+        time.sleep(15)
         ok = get_status(box_id)
         if ok:
             break
@@ -157,7 +162,7 @@ def get_status(box_id):
         return False
     ## now check the status
     if status[3] == "running" and status[5] == "ok" and status[6] == "ok":
-        logging.info('All good!')
+        logging.info('Status ok')
         return True
     else:
         logging.info('Status not running or tests not passing')
