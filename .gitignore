@@ -1,2 +1,5 @@
 boxes
 puppet
+
+*.pyc
+.DS_Store
