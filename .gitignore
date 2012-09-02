@@ -5,4 +5,4 @@ puppet
 .DS_Store
 
 # the config file is for users to define
-fab_conf.py
+fab_conf*.py

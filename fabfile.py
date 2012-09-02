@@ -11,7 +11,7 @@ import logging
 import time
 import re
 
-from fabric.api import task, local, run, sudo, env, settings, put
+from fabric.api import task, local, run, sudo, settings, put
 ## Keep general setup options & defaults in fab_conf.py
 from fab_conf import *
 
@@ -21,25 +21,27 @@ from fab_conf import *
 @task
 def create_instance(name,
                     ami_id=None,
-                    box_type='t1.micro',
-                    size_gb=8,
-                    zone='us-east-1c',
-                    key_pair='venmo_macbook_air_danny_rsa'):
+                    box_type=None,
+                    size_gb=None,
+                    zone=None,
+                    key_pair=None):
     """ Create an ebs-backed instance, with hostname set to its EC2 Name tag
         :name => EC2 Name and hostname
-        :ami_id => the AWS AMI ID of the OS image to install on the box.
-            Defaults to Ubuntu 1004 32 bit
+        :ami_id => the AWS AMI ID of the OS image to install on the box
         :box_type => amazon box size (e.g. t1.micro, m1.large, etc)
-        :zone => zone (within us-east region) to use.  Defaults to "us-east-1c"
+        :zone => zone (within us-east region) to use
         :key_pair => AWS private key to accept as default on the new box
     """
     ### Create the box
     ###   (some details are hard-coded for now, until I need to tweak them)
-    params = {'ami_id': ami_id or DEFAULT_AMI, 'box_type': box_type,
-        'size_gb': size_gb, 'zone': zone, 'hostname': name,
-        'key_pair': 'venmo_macbook_air_danny_rsa'}
+    params = {'ami_id': ami_id or DEFAULT_AMI,
+              'box_type': box_type or DEFAULT_BOX_TYPE,
+              'size_gb': size_gb or DEFAULT_SIZE,
+              'zone': zone or DEFAULT_ZONE,
+              'name': name,
+              'key_pair': key_pair or DEFAULT_KEY_PAIR}
     cmd = "ec2-run-instances {ami_id} --instance-type {box_type} " \
-        "--availability-zone {zone} --user-data 'hostname={hostname}' " \
+        "--availability-zone {zone} --user-data 'name={name}' " \
         "--block-device-mapping /dev/sda1=:{size_gb}:true " \
         "--key {key_pair}".format(**params)
     logging.info("Creating box {0}...".format(name))
@@ -53,7 +55,8 @@ def create_instance(name,
 
 @task
 def create_instance_and_set_hostname(name, **kwargs):
-    """ Creates an instance, waits for it come up, then sets the hostname
+    """ Creates an instance, waits for it come up, then sets the hostname and
+        updates apt
     """
     box_id = create_instance(name, **kwargs)
     ### Wait for box to come up and tests to pass
@@ -65,8 +68,7 @@ def create_instance_and_set_hostname(name, **kwargs):
         if ok:
             break
     logging.info('box running!')
-
-    ### set hostname & install puppet
+    ### set hostname & update apt
     host = get_public_dns_from_id(box_id)
     with settings(host_string=host):
         set_hostname(name)
@@ -75,31 +77,33 @@ def create_instance_and_set_hostname(name, **kwargs):
 
 
 @task
-def create_instance_puppet_agent(name,
-                                 puppetmaster_ip,
-                                 puppetmaster_dns,
-                                 **kwargs):
+def create_instance_puppet_agent(name, **kwargs):
     """ Create box that will run as puppet agent, install puppet, and register
         it with the puppetmaster
-
         :name => name & hostname of box
         :puppetmaster_ip => ip address where new box will be able to reach
             the puppetmaster server
-        :puppetmaster_dns=> domain name where local box can ssh to
+        :puppetmaster_dns => domain name where local box can ssh to
             the puppetmaster server
+        :puppet_agent_conf_file => puppet.conf file to give to puppet agent
         :kwargs => passed through to the `create_instance` task
     """
-    LOCAL_PUPPET_CONF = 'puppet/puppet.conf'
+    # set up args
+    puppetmaster_ip = kwargs.get('puppetmaster_ip') or PUPPETMASTER_IP
+    puppetmaster_dns = kwargs.get('puppetmaster_dns') or PUPPETMASTER_DNS
+    puppet_agent_conf_file = kwargs.get('puppet_agent_conf_file') or \
+            PUPPET_AGENT_CONF_FILE
+    # make box
     box_id = create_instance_and_set_hostname(name, **kwargs)
     host = get_public_dns_from_id(box_id)
     with settings(host_string=host):
-        install_puppet_agent(LOCAL_PUPPET_CONF, puppetmaster_ip)
-        puppet_cert_handshake(puppetmaster_dns)
+        install_puppet_agent(puppet_agent_conf_file, puppetmaster_ip)
+        puppet_cert_sign(puppetmaster_dns)
     return box_id
 
 
 @task
-def install_puppet_agent(local_puppet_conf, puppetmaster_ip):
+def install_puppet_agent(puppet_agent_conf_file, puppetmaster_ip):
     """ install puppet and set box up as a puppet agent
         :puppet_dir => local directory of where to find puppet.conf
     """
@@ -107,18 +111,17 @@ def install_puppet_agent(local_puppet_conf, puppetmaster_ip):
     # put puppetmaster into the /etc/hosts file
     sudo('echo -e "\\n{0}    puppetmaster.$(dnsdomainname) puppetmaster puppet" ' \
          '>> /etc/hosts'.format(puppetmaster_ip))
-    # clean out default puppet stuff since the agent doesn't need it
-    sudo('rm -rf /etc/puppet/*')
-    put(local_puppet_conf, '/etc/puppet/puppet.conf', use_sudo=True)
+    #sudo('rm -rf /etc/puppet/*')   # i was cleaning it out, but no reason to
+    put(puppet_agent_conf_file, '/etc/puppet/puppet.conf', use_sudo=True)
 
 
 @task
-def puppet_cert_handshake(puppetmaster_dns):
+def puppet_cert_sign(puppetmaster_dns):
     """ do the master/agent cert handshake for setting up a new puppet agent
         :puppetmaster_dns => dns to reach the puppet master from local box
     """
     agent_fqdn = sudo('facter fqdn', pty=True)
-    # initialize handshake
+    # initialize handshake - it will fail since it's not signed yet, so exit 0
     sudo('puppet agent -t || exit 0')
     # sign the cert on puppetmaster
     with settings(host_string=puppetmaster_dns):
