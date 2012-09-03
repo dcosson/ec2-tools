@@ -4,11 +4,19 @@
 import logging
 from fabric.api import env
 
-# In particular, you should define:
-# DEFAULT_AMI  # default amazon ami to use, so you don't have specify each time
-# PUPPETMASTER_IP  # internal ip address for boxes to reach puppetmaster
-# PUPPETMASTER_DNS  # public ip or domain to reach puppetmaster on the internet
+# Variables to define:
+DEFAULT_AMI = "ami-057bcf6c"  # ami id to use
+DEFAULT_BOX_TYPE = 't1.micro'
+DEFAULT_SIZE = 8  # size of root ebs mount, in GB
+DEFAULT_ZONE = 'us-east-1c'  # availability zone
+DEFAULT_KEY_PAIR = 'your-aws-key-pair'
+DEFAULT_GROUPS = ['default', 'webserver']  # security groups
+
+# Puppet Variables
+PUPPETMASTER_IP = '123.45.67.890'  # internal ip address of puppetmaster
+PUPPETMASTER_DNS = 'puppetmaster.example.com'  # public ip or dns of master
+PUPPET_AGENT_CONF_FILE = './puppet/puppet.conf'  # conf file to give agents
 
 # Optional
-# logging.basicConfig(level=logging.DEBUG)  # whatever level you want
-# env.user = 'ubuntu'  # default user for your ami
+logging.basicConfig(level=logging.DEBUG)  # whatever level you want
+env.user = 'ubuntu'  # default user for your ami
