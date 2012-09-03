@@ -1,4 +1,4 @@
-## EC2 Experiments
+## EC2 Puppet Fabric
 
 A work in progress - mostly just my own experiments, not sure how useful it actually is.
 
@@ -11,8 +11,8 @@ Currently does the following:
 * registers as agent (sends cert to the puppetmaster server and server signs it)
 * Runs the `puppet agent -t` command (in non-daemon mode) to provision itself
 
-The idea is to run one command `fab create_instance_puppet_agent:yourbox` and get a new EC2 server that registers with your puppetmaster and then provisions itself with puppet.
+The idea is to run one command `fab create_instance_puppet_agent:yourbox` and get a new EC2 server that registers with your puppetmaster and then provisions itself with puppet.  Most of the individual steps can also be run separately, use `fab -l` to list available commands and `fab -d COMMANDNAME` to see full docstring.
 
-You need EC2 Command Line Tools installed with the keys set up (run a command like `ec2-describe-instances` to test the setup).
+You need EC2 Command Line Tools installed with the keys set up (run a command like `ec2-describe-instances` to test the setup).  Only tested on puppet 2.7 on Ubuntu at the moment.
 
 There are a bunch of defaults that you can put in a `fab_conf.py` file so you don't have to type as much to run the commands - see the example file.
