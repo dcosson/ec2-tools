@@ -9,7 +9,7 @@ Currently does the following:
 * Sets its hostname (used by puppetmaster to identify nodes and know which catalog to send)
 * installs `puppet`
 * registers as agent (sends cert to the puppetmaster server and server signs it)
-* Runs the `puppet agent -t` command (in non-daemon mode) to provision itself
+* Starts the puppet agent daemon (`sudo puppet agent`) to provision the new server
 
 The idea is to run one command `fab create_instance_puppet_agent:yourbox` and get a new EC2 server that registers with your puppetmaster and then provisions itself with puppet.  Most of the individual steps can also be run separately, use `fab -l` to list available commands and `fab -d COMMANDNAME` to see full docstring.
 

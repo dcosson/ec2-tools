@@ -109,6 +109,7 @@ def create_instance_puppet_agent(name, **kwargs):
     with settings(host_string=host):
         install_puppet_agent(puppet_agent_conf_file, puppetmaster_ip)
         puppet_cert_sign(puppetmaster_dns)
+        sudo('puppet agent')
     return box_id
 
 
